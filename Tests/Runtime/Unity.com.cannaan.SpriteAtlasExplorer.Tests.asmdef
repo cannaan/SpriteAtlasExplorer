@@ -1,0 +1,11 @@
+{
+  "name": "Unity.com.cannaan.SpriteAtlasExplorer.Tests",
+  "references": [
+    "Unity.com.cannaan.SpriteAtlasExplorer"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": []
+}
