@@ -14,6 +14,14 @@ namespace SpriteAtlasExplorer
 {
     public class SpriteAtlasMapData
     {
+        public enum SpriteAtlasError
+        {
+            None,
+            NoTextures,
+            NotPacked,
+            TextureNotFound,
+            UnknownException
+        }
         internal struct SpriteRect
         {
             public Sprite sprite;
@@ -28,39 +36,118 @@ namespace SpriteAtlasExplorer
         private List<SpriteTexture> m_spriteTextures = new List<SpriteTexture>();
 
         public int textureCount => m_spriteTextures.Count;
+        public SpriteAtlasError error { get; private set; }
+        public string errorInfo { get; private set; }
 
-        public static SpriteAtlasMapData Create(SpriteAtlas spriteAtlas)
+        private void Update(SpriteAtlas spriteAtlas)
         {
-            Type spriteAtlasExtensionsType = typeof(SpriteAtlasExtensions);
-            MethodInfo getPreviewTextureMethod = spriteAtlasExtensionsType.GetMethod("GetPreviewTextures", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
-            Texture2D[] previewTextures = getPreviewTextureMethod.Invoke(null, new object[] { spriteAtlas }) as Texture2D[];
-            if(previewTextures != null && previewTextures.Length > 0)
-            { 
-                SpriteAtlasMapData newSpriteAtlasMap = new SpriteAtlasMapData();
-                foreach(Texture2D texture in previewTextures)
+            error = SpriteAtlasError.None;
+            UpdateTextures(spriteAtlas);
+            if (error != SpriteAtlasError.None)
+            {
+                UpdateSprites(spriteAtlas);
+            }
+        }
+
+        private void UpdateTextures(SpriteAtlas spriteAtlas)
+        {
+            try
+            {
+                m_spriteTextures.Clear();
+                Type spriteAtlasExtensionsType = typeof(SpriteAtlasExtensions);
+                MethodInfo getPreviewTextureMethod = spriteAtlasExtensionsType.GetMethod("GetPreviewTextures", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+                Texture2D[] previewTextures = getPreviewTextureMethod.Invoke(null, new object[] { spriteAtlas }) as Texture2D[];
+                if (previewTextures == null || previewTextures.Length > 0)
                 {
-                    SpriteTexture spriteTexture = new SpriteTexture();
-                    spriteTexture.texture = texture;
-                    newSpriteAtlasMap.m_spriteTextures.Add(spriteTexture);
+                    error = SpriteAtlasError.NoTextures;
                 }
+                else
+                { 
+                    foreach(Texture2D t in previewTextures)
+                    {
+                        m_spriteTextures.Add(new SpriteTexture { texture = t });
+                    }
+                }
+            }
+            catch(Exception e)
+            {
+                error = SpriteAtlasError.UnknownException;
+                errorInfo = e.Message + "\r\n" + e.StackTrace;
+                m_spriteTextures.Clear();
+            }
+        }
+
+        private void UpdateSprites(SpriteAtlas spriteAtlas)
+        {
+            try
+            {
+                int spriteCount = spriteAtlas.spriteCount;
+                if(spriteCount == 0)
+                {
+                    error = SpriteAtlasError.NotPacked;
+                    errorInfo = "no sprite contains in sprite atlas";
+                    return;
+                }
+                Sprite[] tmpSprites = new Sprite[spriteCount];
+                Type spriteAtlasExtensionsType = typeof(SpriteAtlasExtensions);
                 MethodInfo getPackedSpritesMethod = spriteAtlasExtensionsType.GetMethod("GetPackedSprites", BindingFlags.Static | BindingFlags.NonPublic);
                 Sprite[] sprites = getPackedSpritesMethod.Invoke(null, new object[] { spriteAtlas }) as Sprite[];
                 foreach(Sprite s in sprites)
                 {
-                    Texture2D texture = SpriteUtility.GetSpriteTexture(s, true);
-                    foreach(SpriteTexture st in newSpriteAtlasMap.m_spriteTextures)
+                    Texture2D texture = s.texture;
+                    Rect rect = Rect.MinMaxRect(0, 0, 0, 0);
+                    if(!s.packed)
+                    {
+                        int cnt = spriteAtlas.GetSprites(tmpSprites, s.name);
+                        if(cnt == 0)
+                        {
+                            error = SpriteAtlasError.NotPacked;
+                            errorInfo = $"can not find {s.name} in sprite atlas";
+                            return;
+                        }
+                        for(int i = 0;i < cnt;++i)
+                        {
+                            if(tmpSprites[i].rect.width == s.rect.width && tmpSprites[i].rect.height == s.rect.height)
+                            {
+                                texture = tmpSprites[i].texture;
+                                rect = CalculateRect(tmpSprites[i]);
+                                break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        rect = CalculateRect(s);
+                    }
+                    bool match = false;
+                    foreach(SpriteTexture st in m_spriteTextures)
                     {
                         if(st.texture == texture)
                         {
-                            Rect rect = CalculateRect(s);
                             st.sprites.Add(new SpriteRect { sprite = s, rect = rect });
+                            match = true;
                             break;
                         }
                     }
+                    if(!match)
+                    {
+                        error = SpriteAtlasError.TextureNotFound;
+                        errorInfo = $"can not find texture {texture.name} for {s.name}";
+                    }
                 }
-                return newSpriteAtlasMap;
             }
-            return null;
+            catch (Exception e)
+            {
+                error = SpriteAtlasError.UnknownException;
+                errorInfo = e.Message + "\r\n" + e.StackTrace;
+            }
+        }
+
+        public static SpriteAtlasMapData Create(SpriteAtlas spriteAtlas)
+        {
+            SpriteAtlasMapData ret = new SpriteAtlasMapData();
+            ret.Update(spriteAtlas);
+            return ret;
         }
 
         private static Rect CalculateRect(Sprite sprite)

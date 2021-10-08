@@ -52,15 +52,16 @@ namespace SpriteAtlasExplorer
             DrawSpriteAtlasField();
             if (m_spriteAtlas != null)
             {
-                Rect page = Newline();
                 DrawPageField();
+                DrawInfos();
+                DrawTexturePreview();
+                Rect newline = Newline();
+                Rect box = NewRect(500);
+                Texture2D grayChecker = AssetDatabase.GetBuiltinExtraResource<Texture2D>("Default-Checker-Gray.png");
+                float scaleX = box.width / grayChecker.width;
+                float scaleY = box.height / grayChecker.height;
+                GUI.DrawTextureWithTexCoords(box, grayChecker, new Rect(0, 0, scaleX, scaleY));
             }
-            Rect newline = Newline();
-            Rect box = NewRect(500);
-            Texture2D grayChecker = AssetDatabase.GetBuiltinExtraResource<Texture2D>("Default-Checker-Gray.png");
-            float scaleX = box.width / grayChecker.width;
-            float scaleY = box.height / grayChecker.height;
-            GUI.DrawTextureWithTexCoords(box, grayChecker, new Rect(0, 0, scaleX, scaleY));
             EndGUI();
         }
 
@@ -92,27 +93,67 @@ namespace SpriteAtlasExplorer
 
         private void DrawPageField()
         {
-            if(m_spriteAtlasData != null)
+            if(m_spriteAtlasData != null && m_spriteAtlasData.textureCount > 0)
             {
                 Rect rect = Newline();
                 int textureCount = m_spriteAtlasData.textureCount;
-                if(textureCount > 0)
+                if(m_atlasPopupNames == null || m_atlasPopupNames.Length != textureCount)
                 {
-                    if(m_atlasPopupNames == null || m_atlasPopupNames.Length != textureCount)
+                    m_atlasPopupNames = new string[textureCount];
+                    for(int i = 0;i < textureCount;++i)
                     {
-                        m_atlasPopupNames = new string[textureCount];
-                        for(int i = 0;i < textureCount;++i)
-                        {
-                            m_atlasPopupNames[i] = "# " + (i + 1);
-                        }
+                        m_atlasPopupNames[i] = "# " + (i + 1);
                     }
-                    m_atlasIndex = EditorGUI.Popup(rect, "Page:", m_atlasIndex, m_atlasPopupNames);
                 }
-                else
+                m_atlasIndex = EditorGUI.Popup(rect, "Page:", m_atlasIndex, m_atlasPopupNames);
+            }
+        }
+
+        private void DrawInfos()
+        {
+            bool drawRefreshButton = false;
+            if(m_spriteAtlasData == null)
+            {
+                Rect rect = NewRect(EditorGUIUtility.singleLineHeight * 2);
+                EditorGUI.HelpBox(rect, "sprite atlas is not read correctly, please refresh and try again", MessageType.Error);
+                drawRefreshButton = true;
+            }
+            else
+            {
+                if(m_spriteAtlasData.error != SpriteAtlasMapData.SpriteAtlasError.None)
                 {
-                    EditorGUI.HelpBox(rect, "sprite atlas is not packed, click \"Pack Preview\" on inspector", MessageType.Warning);
+                    Rect rect = NewRect(EditorGUIUtility.singleLineHeight * 2);
+                    drawRefreshButton = true;
+                    switch (m_spriteAtlasData.error)
+                    {
+                        case SpriteAtlasMapData.SpriteAtlasError.NoTextures:
+                            EditorGUI.HelpBox(rect, "sprite atlas is not packed. click \"Pack Preview\" on its inspector", MessageType.Error);
+                            break;
+                        case SpriteAtlasMapData.SpriteAtlasError.NotPacked:
+                            EditorGUI.HelpBox(rect, $"{m_spriteAtlasData.errorInfo}\r\nTry click \"Pack Preview\" or enter and quit play mode for once. Or set Sprite Packer Mode to Always Enabled in editor settings", MessageType.Error);
+                            break;
+                        case SpriteAtlasMapData.SpriteAtlasError.TextureNotFound:
+                            EditorGUI.HelpBox(rect, $"{m_spriteAtlasData.errorInfo}\r\nTry click \"Pack Preview\" or enter and quit play mode for once. Or set Sprite Packer Mode to Always Enabled in editor settings", MessageType.Error);
+                            break;
+                        case SpriteAtlasMapData.SpriteAtlasError.UnknownException:
+                            EditorGUI.HelpBox(rect, $"Caught unhandled error.\r\n{m_spriteAtlasData.errorInfo}", MessageType.Error);
+                            break;
+                    }
                 }
             }
+            if(drawRefreshButton)
+            {
+                Rect rect = Newline();
+                if(GUI.Button(rect, "Refresh"))
+                {
+                    SetSpriteAtlas(m_spriteAtlas);
+                }
+            }
+        }
+
+        private void DrawTexturePreview()
+        {
+
         }
 
         private Rect Newline()
