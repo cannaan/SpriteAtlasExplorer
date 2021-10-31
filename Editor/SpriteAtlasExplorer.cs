@@ -50,6 +50,7 @@ namespace SpriteAtlasExplorer
         {
             BeginGUI();
             DrawSpriteAtlasField();
+            DrawRefreshButton();
             if (m_spriteAtlas != null)
             {
                 DrawPageField();
@@ -91,6 +92,15 @@ namespace SpriteAtlasExplorer
             }
         }
 
+        private void DrawRefreshButton()
+        {
+            Rect rect = Newline();
+            if (GUI.Button(rect, "Refresh"))
+            {
+                SetSpriteAtlas(m_spriteAtlas);
+            }
+        }
+
         private void DrawPageField()
         {
             if(m_spriteAtlasData != null && m_spriteAtlasData.textureCount > 0)
@@ -111,19 +121,16 @@ namespace SpriteAtlasExplorer
 
         private void DrawInfos()
         {
-            bool drawRefreshButton = false;
             if(m_spriteAtlasData == null)
             {
                 Rect rect = NewRect(EditorGUIUtility.singleLineHeight * 2);
                 EditorGUI.HelpBox(rect, "sprite atlas is not read correctly, please refresh and try again", MessageType.Error);
-                drawRefreshButton = true;
             }
             else
             {
                 if(m_spriteAtlasData.error != SpriteAtlasMapData.SpriteAtlasError.None)
                 {
                     Rect rect = NewRect(EditorGUIUtility.singleLineHeight * 2);
-                    drawRefreshButton = true;
                     switch (m_spriteAtlasData.error)
                     {
                         case SpriteAtlasMapData.SpriteAtlasError.NoTextures:
@@ -141,19 +148,19 @@ namespace SpriteAtlasExplorer
                     }
                 }
             }
-            if(drawRefreshButton)
-            {
-                Rect rect = Newline();
-                if(GUI.Button(rect, "Refresh"))
-                {
-                    SetSpriteAtlas(m_spriteAtlas);
-                }
-            }
         }
 
         private void DrawTexturePreview()
         {
-
+            if(m_spriteAtlasData != null)
+            {
+                if(m_spriteAtlasData.textureCount == 0)
+                {
+                    Rect rect = NewRect(EditorGUIUtility.singleLineHeight * 2);
+                    EditorGUI.HelpBox(rect, "No Textures generated.", MessageType.Warning);
+                    return;
+                }
+            }
         }
 
         private Rect Newline()

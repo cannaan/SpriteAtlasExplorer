@@ -57,7 +57,7 @@ namespace SpriteAtlasExplorer
                 Type spriteAtlasExtensionsType = typeof(SpriteAtlasExtensions);
                 MethodInfo getPreviewTextureMethod = spriteAtlasExtensionsType.GetMethod("GetPreviewTextures", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
                 Texture2D[] previewTextures = getPreviewTextureMethod.Invoke(null, new object[] { spriteAtlas }) as Texture2D[];
-                if (previewTextures == null || previewTextures.Length > 0)
+                if (previewTextures == null || previewTextures.Length == 0)
                 {
                     error = SpriteAtlasError.NoTextures;
                 }
