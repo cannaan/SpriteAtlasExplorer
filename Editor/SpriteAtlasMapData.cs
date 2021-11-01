@@ -38,6 +38,14 @@ namespace SpriteAtlasExplorer
         public int textureCount => m_spriteTextures.Count;
         public SpriteAtlasError error { get; private set; }
         public string errorInfo { get; private set; }
+        public Texture2D GetTextureAt(int index)
+        {
+            if(m_spriteTextures != null && m_spriteTextures.Count > index && index >= 0)
+            {
+                return m_spriteTextures[index].texture;
+            }
+            return null;
+        }
 
         private void Update(SpriteAtlas spriteAtlas)
         {

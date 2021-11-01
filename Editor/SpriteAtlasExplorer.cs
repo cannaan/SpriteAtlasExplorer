@@ -29,6 +29,7 @@ namespace SpriteAtlasExplorer
         private Rect m_windowRect;
         private Texture m_transparentBackground;
         private string[] m_atlasPopupNames;
+        private ScalableTextureGUI m_previewGUI = new ScalableTextureGUI();
 
         private void SetSpriteAtlas(SpriteAtlas spriteAtlas)
         {
@@ -40,9 +41,11 @@ namespace SpriteAtlasExplorer
         {
             m_spriteAtlasData = null;
             m_atlasIndex = 0;
+            m_previewGUI = new ScalableTextureGUI();
             if (m_spriteAtlas != null)
             {
                 m_spriteAtlasData = SpriteAtlasMapData.Create(m_spriteAtlas);
+                m_previewGUI.texture = m_spriteAtlasData.GetTextureAt(m_atlasIndex);
             }
         }
 
@@ -115,7 +118,12 @@ namespace SpriteAtlasExplorer
                         m_atlasPopupNames[i] = "# " + (i + 1);
                     }
                 }
+                EditorGUI.BeginChangeCheck();
                 m_atlasIndex = EditorGUI.Popup(rect, "Page:", m_atlasIndex, m_atlasPopupNames);
+                if(EditorGUI.EndChangeCheck())
+                {
+                    m_previewGUI.texture = m_spriteAtlasData.GetTextureAt(m_atlasIndex);
+                }
             }
         }
 
@@ -123,14 +131,14 @@ namespace SpriteAtlasExplorer
         {
             if(m_spriteAtlasData == null)
             {
-                Rect rect = NewRect(EditorGUIUtility.singleLineHeight * 2);
+                Rect rect = NewRect(EditorGUIUtility.singleLineHeight * 3);
                 EditorGUI.HelpBox(rect, "sprite atlas is not read correctly, please refresh and try again", MessageType.Error);
             }
             else
             {
                 if(m_spriteAtlasData.error != SpriteAtlasMapData.SpriteAtlasError.None)
                 {
-                    Rect rect = NewRect(EditorGUIUtility.singleLineHeight * 2);
+                    Rect rect = NewRect(EditorGUIUtility.singleLineHeight * 3);
                     switch (m_spriteAtlasData.error)
                     {
                         case SpriteAtlasMapData.SpriteAtlasError.NoTextures:
@@ -160,6 +168,11 @@ namespace SpriteAtlasExplorer
                     EditorGUI.HelpBox(rect, "No Textures generated.", MessageType.Warning);
                     return;
                 }
+                Rect previewRect = NewRectToBottom();
+                if(m_previewGUI.OnGUI(previewRect))
+                {
+                    Repaint();
+                }
             }
         }
 
@@ -173,6 +186,10 @@ namespace SpriteAtlasExplorer
             ret.height = height;
             m_windowRect.yMin = ret.yMax;
             return ret;
+        }
+        private Rect NewRectToBottom()
+        {
+            return NewRect(m_windowRect.height);
         }
     }
 }
