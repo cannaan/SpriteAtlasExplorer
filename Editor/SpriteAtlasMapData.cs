@@ -113,15 +113,21 @@ namespace SpriteAtlasExplorer
                             errorInfo = $"can not find {s.name} in sprite atlas";
                             return;
                         }
-                        for(int i = 0;i < cnt;++i)
+                        int sameNameCnt = 0;
+                        // get index of packedSprites with same name
+                        for(int i = 0;i < sprites.Length;++i)
                         {
-                            if(tmpSprites[i].rect.width == s.rect.width && tmpSprites[i].rect.height == s.rect.height)
+                            if(sprites[i] == s)
                             {
-                                texture = tmpSprites[i].texture;
-                                rect = CalculateRect(tmpSprites[i]);
                                 break;
                             }
+                            if(sprites[i].name == s.name)
+                            {
+                                ++sameNameCnt;
+                            }
                         }
+                        texture = tmpSprites[sameNameCnt].texture;
+                        rect = CalculateRect(tmpSprites[sameNameCnt]);
                     }
                     else
                     {

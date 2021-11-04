@@ -13,6 +13,7 @@ public class ScalableTextureGUI
     public float maxScaling = 100.0f;
     public float scrollSpeed { get; set; } = 0.01f;
     public Texture2D texture { get; set; }
+    public Texture2D background { get; set; }
     public float aspect => texture == null ? 1 : texture.width / (float)texture.height;
 
     private bool m_isDragging = false;
@@ -49,7 +50,7 @@ public class ScalableTextureGUI
             if (Event.current.type == EventType.ScrollWheel)
             {
                 Vector2 normalizedPos = (pos - activeRect.min) / activeRect.size;
-                m_scale += Event.current.delta.y * scrollSpeed;
+                m_scale *= 1.0f + Event.current.delta.y * scrollSpeed;
                 activeRect = GetActiveRect(rect);
                 Vector2 newNormalizedPos = (pos - activeRect.min) / activeRect.size;
                 m_offset += newNormalizedPos - normalizedPos;
@@ -82,8 +83,59 @@ public class ScalableTextureGUI
                 Event.current.Use();
             }
         }
+
+        EnsureScaleAndOffset(rect);
+
         Rect drawRect = GetDrawRect(rect, out var uvRect);
+        if(background != null)
+        {
+            Rect bgRect = uvRect;
+            Vector2 scale = new Vector2(texture.width / (float)background.width, texture.height / (float)background.height);
+            bgRect.min *= scale;
+            bgRect.max *= scale;
+            GUI.DrawTextureWithTexCoords(drawRect, background, bgRect);
+        }
         GUI.DrawTextureWithTexCoords(drawRect, texture, uvRect);
         return repaint;
+    }
+
+    private void EnsureScaleAndOffset(Rect rect)
+    {
+        float minScale = GetMinimumScale(rect);
+        m_scale = Mathf.Max(m_scale, minScale);
+
+        Rect activeRect = GetActiveRect(rect);
+        if(activeRect.width <= rect.width)
+        {
+            m_offset.x = 0.0f;
+        }
+        else
+        {
+            if(activeRect.xMin > rect.xMin)
+            {
+                m_offset.x = (activeRect.width / rect.width - 1) * 0.5f / m_scale;
+            }
+            else if(activeRect.xMax < rect.xMax)
+            {
+                m_offset.x = (1 - activeRect.width / rect.width) * 0.5f / m_scale;
+            }
+        }
+        if(activeRect.height <= rect.height)
+        {
+            m_offset.y = 0.0f;
+        }
+    }
+
+    private float GetMinimumScale(Rect rect)
+    {
+        float rectAspect = rect.width / rect.height;
+        if(rectAspect < aspect)
+        {
+            return 1.0f;
+        }
+        else
+        {
+            return aspect / rectAspect;
+        }
     }
 }

@@ -27,7 +27,7 @@ namespace SpriteAtlasExplorer
         private SpriteAtlasMapData m_spriteAtlasData;
         private int m_atlasIndex;
         private Rect m_windowRect;
-        private Texture m_transparentBackground;
+        private Texture2D m_backgroundTexture;
         private string[] m_atlasPopupNames;
         private ScalableTextureGUI m_previewGUI = new ScalableTextureGUI();
 
@@ -46,6 +46,11 @@ namespace SpriteAtlasExplorer
             {
                 m_spriteAtlasData = SpriteAtlasMapData.Create(m_spriteAtlas);
                 m_previewGUI.texture = m_spriteAtlasData.GetTextureAt(m_atlasIndex);
+                if(m_backgroundTexture == null)
+                {
+                    m_backgroundTexture = AssetDatabase.GetBuiltinExtraResource<Texture2D>(s_transparentBGPath);
+                }
+                m_previewGUI.background = m_backgroundTexture;
             }
         }
 
