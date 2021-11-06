@@ -11,10 +11,11 @@ public class ScalableTextureGUI
     private Vector2 m_offset = Vector2.zero;
     private float m_scale = 1.0f;
     public float maxScaling = 100.0f;
-    public float scrollSpeed { get; set; } = 0.01f;
+    public float scrollSpeed { get; set; } = -0.01f;
     public Texture2D texture { get; set; }
     public Texture2D background { get; set; }
     public float aspect => texture == null ? 1 : texture.width / (float)texture.height;
+    private Rect normalizedTextureRect => new Rect(m_offset * m_scale, new Vector2(m_scale, m_scale / aspect));
 
     private bool m_isDragging = false;
 
@@ -27,17 +28,38 @@ public class ScalableTextureGUI
 
     public Rect GetDrawRect(Rect rect, out Rect uvRect)
     {
+        Rect textureRect = normalizedTextureRect;
+        Rect normalizedRect = GetNormalizedRect(rect);
+        Vector2 min = textureRect.min;
+        Vector2 max = textureRect.max;
+
         Rect activeRect = GetActiveRect(rect);
         Rect ret = Rect.MinMaxRect(Mathf.Max(activeRect.xMin, rect.xMin), Mathf.Max(activeRect.yMin, rect.yMin), Mathf.Min(activeRect.xMax, rect.xMax), Mathf.Min(activeRect.yMax, rect.yMax));
         uvRect = Rect.MinMaxRect((ret.xMin - activeRect.xMin) / activeRect.width, 1 - (ret.yMax - activeRect.yMin) / activeRect.height, (ret.xMax - activeRect.xMin) / activeRect.width, 1 - (ret.yMin - activeRect.yMin) / activeRect.height);
         return ret;
     }
-
     private Rect GetActiveRect(Rect rect)
     {
-        Vector2 size = new Vector2(rect.width * m_scale, rect.width * m_scale / aspect);
-        Vector2 center = rect.center + m_offset * size;
-        return new Rect(center - size * 0.5f, size);
+        Rect textureRect = normalizedTextureRect;
+        Vector2 min = Normalized2RealPos(textureRect.min, rect);
+        Vector2 max = Normalized2RealPos(textureRect.max, rect);
+        return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
+    }
+    private Rect GetNormalizedRect(Rect rect)
+    {
+        return new Rect(rect.xMin, rect.center.y - rect.width * 0.5f, rect.width, rect.width);
+    }
+
+    public Vector2 Real2NormalizedPos(Vector2 pos, Rect rect)
+    {
+        Rect normalizedRect = GetNormalizedRect(rect);
+        return (pos - normalizedRect.min) / normalizedRect.size;
+    }
+
+    public Vector2 Normalized2RealPos(Vector2 nPos, Rect rect)
+    {
+        Rect normalizedRect = GetNormalizedRect(rect);
+        return normalizedRect.min + nPos * normalizedRect.size;
     }
 
     public bool OnGUI(Rect rect)
@@ -45,7 +67,7 @@ public class ScalableTextureGUI
         Vector2 pos = Event.current.mousePosition;
         Rect activeRect = GetActiveRect(rect);
         bool repaint = false;
-        if (activeRect.Contains(pos))
+        if (rect.Contains(pos))
         {
             if (Event.current.type == EventType.ScrollWheel)
             {
@@ -84,7 +106,7 @@ public class ScalableTextureGUI
             }
         }
 
-        EnsureScaleAndOffset(rect);
+        //EnsureScaleAndOffset(rect);
 
         Rect drawRect = GetDrawRect(rect, out var uvRect);
         if(background != null)
@@ -123,6 +145,9 @@ public class ScalableTextureGUI
         if(activeRect.height <= rect.height)
         {
             m_offset.y = 0.0f;
+        }
+        else
+        {
         }
     }
 
