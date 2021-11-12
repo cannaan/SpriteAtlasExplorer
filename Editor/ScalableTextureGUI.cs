@@ -15,51 +15,61 @@ public class ScalableTextureGUI
     public Texture2D texture { get; set; }
     public Texture2D background { get; set; }
     public float aspect => texture == null ? 1 : texture.width / (float)texture.height;
-    private Rect normalizedTextureRect => new Rect(m_offset * m_scale, new Vector2(m_scale, m_scale / aspect));
-
     private bool m_isDragging = false;
 
     public void Reset()
     {
-        m_offset = Vector2.zero;
-        m_scale = 1.0f;
+        m_offset = new Vector2(0.5f, 0);
+        m_scale = 2.0f;
         m_isDragging = false;
     }
 
     public Rect GetDrawRect(Rect rect, out Rect uvRect)
     {
-        Rect textureRect = normalizedTextureRect;
-        Rect normalizedRect = GetNormalizedRect(rect);
-        Vector2 min = textureRect.min;
-        Vector2 max = textureRect.max;
-
         Rect activeRect = GetActiveRect(rect);
-        Rect ret = Rect.MinMaxRect(Mathf.Max(activeRect.xMin, rect.xMin), Mathf.Max(activeRect.yMin, rect.yMin), Mathf.Min(activeRect.xMax, rect.xMax), Mathf.Min(activeRect.yMax, rect.yMax));
-        uvRect = Rect.MinMaxRect((ret.xMin - activeRect.xMin) / activeRect.width, 1 - (ret.yMax - activeRect.yMin) / activeRect.height, (ret.xMax - activeRect.xMin) / activeRect.width, 1 - (ret.yMin - activeRect.yMin) / activeRect.height);
-        return ret;
+        activeRect.min = Vector2.Max(activeRect.min, rect.min);
+        activeRect.max = Vector2.Min(activeRect.max, rect.max);
+        uvRect = RectToNormalized(activeRect, rect);
+        float tmp = uvRect.yMax;
+        uvRect.yMax = 1.0f - uvRect.yMin;
+        uvRect.yMin = 1.0f - tmp;
+        return activeRect;
     }
     private Rect GetActiveRect(Rect rect)
     {
-        Rect textureRect = normalizedTextureRect;
-        Vector2 min = Normalized2RealPos(textureRect.min, rect);
-        Vector2 max = Normalized2RealPos(textureRect.max, rect);
+        Rect normalized = new Rect(0, 0.5f - 0.5f / aspect, 1, 1.0f / aspect);
+        return NormalizedToRect(normalized, rect);
+    }
+
+    public Rect RectToNormalized(Rect rect, Rect refRect)
+    {
+        Vector2 min = PointToNormalized(rect.min, refRect);
+        Vector2 max = PointToNormalized(rect.max, refRect);
         return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
     }
-    private Rect GetNormalizedRect(Rect rect)
+    public Rect NormalizedToRect(Rect coord, Rect refRect)
     {
-        return new Rect(rect.xMin, rect.center.y - rect.width * 0.5f, rect.width, rect.width);
+        Vector2 min = NormalizedToPoint(coord.min, refRect);
+        Vector2 max = NormalizedToPoint(coord.max, refRect);
+        return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
     }
 
-    public Vector2 Real2NormalizedPos(Vector2 pos, Rect rect)
+    public Vector2 PointToNormalized(Vector2 pos, Rect rect)
     {
-        Rect normalizedRect = GetNormalizedRect(rect);
-        return (pos - normalizedRect.min) / normalizedRect.size;
+        Rect one = new Rect(rect.xMin, rect.center.y - rect.width * 0.5f, rect.width, rect.width);
+        Vector2 coord = (pos - one.min) / one.size;
+        Vector2 texPos = Vector2.one * (0.5f - m_scale * 0.5f) + m_offset;
+        Vector2 texSize = Vector2.one * m_scale;
+        return (coord - texPos) / texSize;
     }
 
-    public Vector2 Normalized2RealPos(Vector2 nPos, Rect rect)
+    public Vector2 NormalizedToPoint(Vector2 coord, Rect rect)
     {
-        Rect normalizedRect = GetNormalizedRect(rect);
-        return normalizedRect.min + nPos * normalizedRect.size;
+        Rect one = new Rect(rect.xMin, rect.center.y - rect.width * 0.5f, rect.width, rect.width);
+        Vector2 texPos = Vector2.one * (0.5f - m_scale * 0.5f) + m_offset;
+        Vector2 texSize = Vector2.one * m_scale;
+        Vector2 normalized = texPos + coord * texSize;
+        return one.min + normalized * one.size;
     }
 
     public bool OnGUI(Rect rect)
@@ -71,11 +81,10 @@ public class ScalableTextureGUI
         {
             if (Event.current.type == EventType.ScrollWheel)
             {
-                Vector2 normalizedPos = (pos - activeRect.min) / activeRect.size;
+                Vector2 oldCoord = PointToNormalized(pos, rect);
                 m_scale *= 1.0f + Event.current.delta.y * scrollSpeed;
-                activeRect = GetActiveRect(rect);
-                Vector2 newNormalizedPos = (pos - activeRect.min) / activeRect.size;
-                m_offset += newNormalizedPos - normalizedPos;
+                Vector2 newPos = NormalizedToPoint(oldCoord, rect);
+                m_offset += pos / rect.width - newPos / rect.width;
                 repaint = true;
                 Event.current.Use();
             }
@@ -93,7 +102,9 @@ public class ScalableTextureGUI
             if (m_isDragging)
             {
                 Vector2 delta = Event.current.delta;
-                m_offset += delta / activeRect.size;
+                delta.x /= rect.width;
+                delta.y /= rect.width;
+                m_offset += delta;
                 repaint = true;
             }
         }
@@ -106,7 +117,7 @@ public class ScalableTextureGUI
             }
         }
 
-        //EnsureScaleAndOffset(rect);
+        EnsureScaleAndOffset(rect);
 
         Rect drawRect = GetDrawRect(rect, out var uvRect);
         if(background != null)
@@ -135,11 +146,11 @@ public class ScalableTextureGUI
         {
             if(activeRect.xMin > rect.xMin)
             {
-                m_offset.x = (activeRect.width / rect.width - 1) * 0.5f / m_scale;
+                m_offset.x += (rect.xMin - activeRect.xMin) / rect.width;
             }
             else if(activeRect.xMax < rect.xMax)
             {
-                m_offset.x = (1 - activeRect.width / rect.width) * 0.5f / m_scale;
+                m_offset.x += (rect.xMax - activeRect.xMax) / rect.width;
             }
         }
         if(activeRect.height <= rect.height)
@@ -148,6 +159,14 @@ public class ScalableTextureGUI
         }
         else
         {
+            if(activeRect.yMin > rect.yMin)
+            {
+                m_offset.y += (rect.yMin - activeRect.yMin) / rect.width;
+            }
+            else if(activeRect.yMax < rect.yMax)
+            {
+                m_offset.y += (rect.yMax - activeRect.yMax) / rect.width;
+            }
         }
     }
 
