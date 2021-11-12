@@ -51,7 +51,7 @@ namespace SpriteAtlasExplorer
         {
             error = SpriteAtlasError.None;
             UpdateTextures(spriteAtlas);
-            if (error != SpriteAtlasError.None)
+            if (error == SpriteAtlasError.None)
             {
                 UpdateSprites(spriteAtlas);
             }
@@ -102,7 +102,6 @@ namespace SpriteAtlasExplorer
                 Sprite[] sprites = getPackedSpritesMethod.Invoke(null, new object[] { spriteAtlas }) as Sprite[];
                 foreach(Sprite s in sprites)
                 {
-                    Texture2D texture = s.texture;
                     Rect rect = Rect.MinMaxRect(0, 0, 0, 0);
                     if(!s.packed)
                     {
@@ -126,7 +125,6 @@ namespace SpriteAtlasExplorer
                                 ++sameNameCnt;
                             }
                         }
-                        texture = tmpSprites[sameNameCnt].texture;
                         rect = CalculateRect(tmpSprites[sameNameCnt]);
                     }
                     else
@@ -134,7 +132,8 @@ namespace SpriteAtlasExplorer
                         rect = CalculateRect(s);
                     }
                     bool match = false;
-                    foreach(SpriteTexture st in m_spriteTextures)
+                    Texture2D texture = SpriteUtility.GetSpriteTexture(s, true);
+                    foreach (SpriteTexture st in m_spriteTextures)
                     {
                         if(st.texture == texture)
                         {
@@ -166,7 +165,7 @@ namespace SpriteAtlasExplorer
 
         private static Rect CalculateRect(Sprite sprite)
         {
-            Vector2[] uvs = SpriteUtility.GetSpriteUVs(sprite, true);
+            Vector2[] uvs = sprite.uv;
             if(uvs.Length > 0)
             {
                 float minX = uvs[0].x, minY = uvs[0].y, maxX = uvs[0].x, maxY = uvs[0].y;
