@@ -6,7 +6,7 @@ using UnityEngine.U2D;
 using UnityEditor.Sprites;
 using UnityEditor.U2D;
 using System.IO;
-
+using System;
 
 namespace SpriteAtlasExplorer
 {
@@ -146,14 +146,24 @@ namespace SpriteAtlasExplorer
                     Rect rect = NewRect(EditorGUIUtility.singleLineHeight * 3);
                     switch (m_spriteAtlasData.error)
                     {
-                        case SpriteAtlasMapData.SpriteAtlasError.NoTextures:
-                            EditorGUI.HelpBox(rect, "sprite atlas is not packed. click \"Pack Preview\" on its inspector", MessageType.Error);
+                        case SpriteAtlasMapData.SpriteAtlasError.AtlasNotGenerated:
+                            EditorGUI.HelpBox(rect, "Sprite Atlas has no texture generated or has no sprites included.", MessageType.Error);
+                            rect = Newline();
+                            if(GUI.Button(new Rect(rect.center.x - 100, rect.yMin, 100, rect.height), "Fix me"))
+                            {
+                                PackSpriteAtlas(m_spriteAtlas);
+                                Repaint();
+                            }
                             break;
-                        case SpriteAtlasMapData.SpriteAtlasError.NotPacked:
-                            EditorGUI.HelpBox(rect, $"{m_spriteAtlasData.errorInfo}\r\nTry click \"Pack Preview\" or enter and quit play mode for once. Or set Sprite Packer Mode to Always Enabled in editor settings", MessageType.Error);
-                            break;
-                        case SpriteAtlasMapData.SpriteAtlasError.TextureNotFound:
-                            EditorGUI.HelpBox(rect, $"{m_spriteAtlasData.errorInfo}\r\nTry click \"Pack Preview\" or enter and quit play mode for once. Or set Sprite Packer Mode to Always Enabled in editor settings", MessageType.Error);
+                        case SpriteAtlasMapData.SpriteAtlasError.SpriteNotPacked:
+                            EditorGUI.HelpBox(rect, $"sprite(s) not connected to sprite atlas.\r\nTry enter and exit play mode to fix it.", MessageType.Error);
+                            rect = Newline();
+                            if (GUI.Button(new Rect(rect.center.x - 100, rect.yMin, 100, rect.height), "Fix me"))
+                            {
+                                EditorApplication.EnterPlaymode();
+                                EditorUtility.DisplayDialog("Sprite Atlas Explorer", "we need to enter play mode to let Unity bind sprites to sprite atlas. It's harmless. Once it enters play mode, you can exit play mode immediately and explore sprites on SpriteAtlasExplorer", "OK");
+                                Repaint();
+                            }
                             break;
                         case SpriteAtlasMapData.SpriteAtlasError.UnknownException:
                             EditorGUI.HelpBox(rect, $"Caught unhandled error.\r\n{m_spriteAtlasData.errorInfo}", MessageType.Error);
@@ -161,6 +171,15 @@ namespace SpriteAtlasExplorer
                     }
                 }
             }
+        }
+
+        private void PackSpriteAtlas(SpriteAtlas spriteAtlas)
+        {
+            if(EditorSettings.spritePackerMode != SpritePackerMode.AlwaysOnAtlas)
+            {
+                EditorSettings.spritePackerMode = SpritePackerMode.AlwaysOnAtlas;
+            }
+            SpriteAtlasUtility.PackAtlases(new SpriteAtlas[] { spriteAtlas }, EditorUserBuildSettings.activeBuildTarget, true);
         }
 
         private void DrawTexturePreview()

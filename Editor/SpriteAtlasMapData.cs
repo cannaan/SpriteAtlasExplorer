@@ -17,9 +17,8 @@ namespace SpriteAtlasExplorer
         public enum SpriteAtlasError
         {
             None,
-            NoTextures,
-            NotPacked,
-            TextureNotFound,
+            AtlasNotGenerated,
+            SpriteNotPacked,
             UnknownException
         }
         internal struct SpriteRect
@@ -67,7 +66,7 @@ namespace SpriteAtlasExplorer
                 Texture2D[] previewTextures = getPreviewTextureMethod.Invoke(null, new object[] { spriteAtlas }) as Texture2D[];
                 if (previewTextures == null || previewTextures.Length == 0)
                 {
-                    error = SpriteAtlasError.NoTextures;
+                    error = SpriteAtlasError.AtlasNotGenerated;
                 }
                 else
                 { 
@@ -80,7 +79,7 @@ namespace SpriteAtlasExplorer
             catch(Exception e)
             {
                 error = SpriteAtlasError.UnknownException;
-                errorInfo = e.Message + "\r\n" + e.StackTrace;
+                Debug.LogError($"Caught exception {e.Message}\r\n{e.StackTrace}");
                 m_spriteTextures.Clear();
             }
         }
@@ -92,8 +91,8 @@ namespace SpriteAtlasExplorer
                 int spriteCount = spriteAtlas.spriteCount;
                 if(spriteCount == 0)
                 {
-                    error = SpriteAtlasError.NotPacked;
-                    errorInfo = "no sprite contains in sprite atlas";
+                    error = SpriteAtlasError.AtlasNotGenerated;
+                    Debug.LogError($"SpriteAtlas {spriteAtlas.name} sprite count is 0.");
                     return;
                 }
                 Sprite[] tmpSprites = new Sprite[spriteCount];
@@ -108,8 +107,8 @@ namespace SpriteAtlasExplorer
                         int cnt = spriteAtlas.GetSprites(tmpSprites, s.name);
                         if(cnt == 0)
                         {
-                            error = SpriteAtlasError.NotPacked;
-                            errorInfo = $"can not find {s.name} in sprite atlas";
+                            error = SpriteAtlasError.AtlasNotGenerated;
+                            errorInfo = $"can not find {s.name} in sprite atlas {spriteAtlas.name}";
                             return;
                         }
                         int sameNameCnt = 0;
@@ -132,27 +131,38 @@ namespace SpriteAtlasExplorer
                         rect = CalculateRect(s);
                     }
                     bool match = false;
-                    Texture2D texture = SpriteUtility.GetSpriteTexture(s, true);
-                    foreach (SpriteTexture st in m_spriteTextures)
+                    Texture2D texture = null;
+                    try
                     {
-                        if(st.texture == texture)
-                        {
-                            st.sprites.Add(new SpriteRect { sprite = s, rect = rect });
-                            match = true;
-                            break;
-                        }
+                        texture = SpriteUtility.GetSpriteTexture(s, true);
                     }
-                    if(!match)
+                    catch(Exception exp)
                     {
-                        error = SpriteAtlasError.TextureNotFound;
-                        errorInfo = $"can not find texture {texture.name} for {s.name}";
+                        error = SpriteAtlasError.SpriteNotPacked;
+                        Debug.LogError($"{s.name} is not packed into atlas.\r\n{exp.Message}\r\n{exp.StackTrace}", s);
+                    }
+                    if (texture != null)
+                    {
+                        foreach (SpriteTexture st in m_spriteTextures)
+                        {
+                            if (st.texture == texture)
+                            {
+                                st.sprites.Add(new SpriteRect { sprite = s, rect = rect });
+                                match = true;
+                                break;
+                            }
+                        }
+                        if (!match)
+                        {
+                            Debug.LogWarning($"can not find sprite {s.name} in sprite atlas", s);
+                        }
                     }
                 }
             }
             catch (Exception e)
             {
                 error = SpriteAtlasError.UnknownException;
-                errorInfo = e.Message + "\r\n" + e.StackTrace;
+                Debug.LogError($"Caught exception {e.Message}\r\n{e.StackTrace}");
             }
         }
 

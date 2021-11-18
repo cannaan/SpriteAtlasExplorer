@@ -3,9 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
-// Draw Texture with Landscape mode
-// in rect x,y,w,h, render the texture with is aspect.
-// when m_scale equals 1, texture's width stretch to the rect w. when m_scale equals 2, texcoord u [0.25,0.75] is displayed in rect.
 public class ScalableTextureGUI
 {
     private Vector2 m_offset = Vector2.zero;
@@ -16,12 +13,15 @@ public class ScalableTextureGUI
     public Texture2D background { get; set; }
     public float aspect => texture == null ? 1 : texture.width / (float)texture.height;
     private bool m_isDragging = false;
+    private int m_controlID;
+    private bool m_initialized = false;
 
-    public void Reset()
+    public void Reset(Rect rect)
     {
-        m_offset = new Vector2(0.5f, 0);
-        m_scale = 2.0f;
+        m_offset = Vector2.zero;
+        m_scale = GetMinimumScale(rect);
         m_isDragging = false;
+        m_initialized = true;
     }
 
     public Rect GetDrawRect(Rect rect, out Rect uvRect)
@@ -37,7 +37,7 @@ public class ScalableTextureGUI
     }
     private Rect GetActiveRect(Rect rect)
     {
-        Rect normalized = new Rect(0, 0.5f - 0.5f / aspect, 1, 1.0f / aspect);
+        Rect normalized = new Rect(0, 0, 1, 1);
         return NormalizedToRect(normalized, rect);
     }
 
@@ -57,67 +57,87 @@ public class ScalableTextureGUI
     public Vector2 PointToNormalized(Vector2 pos, Rect rect)
     {
         Rect one = new Rect(rect.xMin, rect.center.y - rect.width * 0.5f, rect.width, rect.width);
-        Vector2 coord = (pos - one.min) / one.size;
-        Vector2 texPos = Vector2.one * (0.5f - m_scale * 0.5f) + m_offset;
-        Vector2 texSize = Vector2.one * m_scale;
-        return (coord - texPos) / texSize;
+        Vector2 texSize = new Vector2(1.0f, 1.0f / aspect) * m_scale;
+        Vector2 texStart = Vector2.one * 0.5f + m_offset - texSize * 0.5f;
+        Rect uv = new Rect(texStart, texSize);
+        Vector2 posInOne = (pos - one.min) / one.size;
+        return (posInOne - uv.min) / uv.size;
     }
 
     public Vector2 NormalizedToPoint(Vector2 coord, Rect rect)
     {
         Rect one = new Rect(rect.xMin, rect.center.y - rect.width * 0.5f, rect.width, rect.width);
-        Vector2 texPos = Vector2.one * (0.5f - m_scale * 0.5f) + m_offset;
-        Vector2 texSize = Vector2.one * m_scale;
-        Vector2 normalized = texPos + coord * texSize;
-        return one.min + normalized * one.size;
+        Vector2 texSize = new Vector2(1.0f, 1.0f / aspect) * m_scale;
+        Vector2 texStart = Vector2.one * 0.5f + m_offset - texSize * 0.5f;
+        Rect uv = new Rect(texStart, texSize);
+        Vector2 posInOne = uv.min + coord * uv.size;
+        return one.min + posInOne * one.size;
+    }
+
+    public Vector2 DirectionToNormalized(Vector2 pos, Rect rect)
+    {
+
     }
 
     public bool OnGUI(Rect rect)
     {
+        if(!m_initialized)
+        {
+            Reset(rect);
+        }
         Vector2 pos = Event.current.mousePosition;
         Rect activeRect = GetActiveRect(rect);
         bool repaint = false;
-        if (rect.Contains(pos))
+        m_controlID = GUIUtility.GetControlID(FocusType.Passive);
+        EventType eventType = Event.current.GetTypeForControl(m_controlID);
+        if (Event.current.type == EventType.ScrollWheel)
         {
-            if (Event.current.type == EventType.ScrollWheel)
+            if (rect.Contains(pos))
             {
                 Vector2 oldCoord = PointToNormalized(pos, rect);
                 m_scale *= 1.0f + Event.current.delta.y * scrollSpeed;
-                Vector2 newPos = NormalizedToPoint(oldCoord, rect);
-                m_offset += pos / rect.width - newPos / rect.width;
+                Vector2 newCoord = PointToNormalized(pos, rect);
+                Vector2 delta = NormalizedToPoint(oldCoord - newCoord, rect) - rect.min;
+                m_offset += delta / rect.width;
                 repaint = true;
                 Event.current.Use();
             }
-            else if (Event.current.type == EventType.MouseDown)
+        }
+        else if (Event.current.type == EventType.MouseDown)
+        {
+            if (rect.Contains(pos))
             {
-                if(Event.current.button == 1)
+                if (Event.current.button == 1)
                 {
                     m_isDragging = true;
+                    GUIUtility.hotControl = m_controlID;
                     Event.current.Use();
                 }
             }
         }
-        if (Event.current.type == EventType.MouseDrag)
+        if (eventType == EventType.MouseDrag)
         {
             if (m_isDragging)
             {
                 Vector2 delta = Event.current.delta;
                 delta.x /= rect.width;
-                delta.y /= rect.width;
+                delta.y /= rect.width / aspect;
                 m_offset += delta;
                 repaint = true;
             }
         }
-        else if (Event.current.type == EventType.MouseUp)
+        else if (eventType == EventType.MouseUp)
         {
             if (m_isDragging)
             {
                 m_isDragging = false;
                 Event.current.Use();
+                m_controlID = 0;
+                GUIUtility.hotControl = 0;
             }
         }
 
-        EnsureScaleAndOffset(rect);
+        //EnsureScaleAndOffset(rect);
 
         Rect drawRect = GetDrawRect(rect, out var uvRect);
         if(background != null)
@@ -137,7 +157,7 @@ public class ScalableTextureGUI
         float minScale = GetMinimumScale(rect);
         m_scale = Mathf.Max(m_scale, minScale);
 
-        Rect activeRect = GetActiveRect(rect);
+        /*Rect activeRect = GetActiveRect(rect);
         if(activeRect.width <= rect.width)
         {
             m_offset.x = 0.0f;
@@ -161,19 +181,19 @@ public class ScalableTextureGUI
         {
             if(activeRect.yMin > rect.yMin)
             {
-                m_offset.y += (rect.yMin - activeRect.yMin) / rect.width;
+                m_offset.y += (rect.yMin - activeRect.yMin) / rect.width * aspect;
             }
             else if(activeRect.yMax < rect.yMax)
             {
-                m_offset.y += (rect.yMax - activeRect.yMax) / rect.width;
+                m_offset.y += (rect.yMax - activeRect.yMax) / rect.width * aspect;
             }
-        }
+        }*/
     }
 
     private float GetMinimumScale(Rect rect)
     {
         float rectAspect = rect.width / rect.height;
-        if(rectAspect < aspect)
+        if(rectAspect <= aspect)
         {
             return 1.0f;
         }
