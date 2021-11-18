@@ -15,6 +15,10 @@ public class ScalableTextureGUI
     private bool m_isDragging = false;
     private int m_controlID;
     private bool m_initialized = false;
+    public void SetDirty()
+    {
+        m_initialized = false;
+    }
 
     public void Reset(Rect rect)
     {
@@ -74,9 +78,19 @@ public class ScalableTextureGUI
         return one.min + posInOne * one.size;
     }
 
-    public Vector2 DirectionToNormalized(Vector2 pos, Rect rect)
+    public Vector2 DirectionToNormalized(Vector2 dir, Rect rect)
     {
-
+        Vector2 one = Vector2.one * rect.width;
+        Vector2 texSize = new Vector2(1.0f, 1.0f / aspect) * m_scale;
+        Vector2 dirInOne = dir / one;
+        return dirInOne / texSize;
+    }
+    public Vector2 NormalizedToDirection(Vector2 dir, Rect rect)
+    {
+        Vector2 one = Vector2.one * rect.width;
+        Vector2 texSize = new Vector2(1.0f, 1.0f / aspect) * m_scale;
+        Vector2 dirInOne = dir * texSize;
+        return dirInOne * one;
     }
 
     public bool OnGUI(Rect rect)
@@ -86,7 +100,6 @@ public class ScalableTextureGUI
             Reset(rect);
         }
         Vector2 pos = Event.current.mousePosition;
-        Rect activeRect = GetActiveRect(rect);
         bool repaint = false;
         m_controlID = GUIUtility.GetControlID(FocusType.Passive);
         EventType eventType = Event.current.GetTypeForControl(m_controlID);
@@ -97,7 +110,7 @@ public class ScalableTextureGUI
                 Vector2 oldCoord = PointToNormalized(pos, rect);
                 m_scale *= 1.0f + Event.current.delta.y * scrollSpeed;
                 Vector2 newCoord = PointToNormalized(pos, rect);
-                Vector2 delta = NormalizedToPoint(oldCoord - newCoord, rect) - rect.min;
+                Vector2 delta = NormalizedToDirection(newCoord - oldCoord, rect);
                 m_offset += delta / rect.width;
                 repaint = true;
                 Event.current.Use();
@@ -137,8 +150,9 @@ public class ScalableTextureGUI
             }
         }
 
-        //EnsureScaleAndOffset(rect);
+        EnsureScaleAndOffset(rect);
 
+        EditorGUI.DrawRect(rect, new Color32(75, 75, 75, 255));
         Rect drawRect = GetDrawRect(rect, out var uvRect);
         if(background != null)
         {
@@ -157,7 +171,7 @@ public class ScalableTextureGUI
         float minScale = GetMinimumScale(rect);
         m_scale = Mathf.Max(m_scale, minScale);
 
-        /*Rect activeRect = GetActiveRect(rect);
+        Rect activeRect = GetActiveRect(rect);
         if(activeRect.width <= rect.width)
         {
             m_offset.x = 0.0f;
@@ -187,7 +201,7 @@ public class ScalableTextureGUI
             {
                 m_offset.y += (rect.yMax - activeRect.yMax) / rect.width * aspect;
             }
-        }*/
+        }
     }
 
     private float GetMinimumScale(Rect rect)

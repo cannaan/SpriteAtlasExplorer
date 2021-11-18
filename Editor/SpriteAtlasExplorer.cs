@@ -63,6 +63,7 @@ namespace SpriteAtlasExplorer
             {
                 DrawPageField();
                 DrawInfos();
+                Newline();
                 DrawTexturePreview();
                 Rect newline = Newline();
                 Rect box = NewRect(500);
@@ -128,6 +129,7 @@ namespace SpriteAtlasExplorer
                 if(EditorGUI.EndChangeCheck())
                 {
                     m_previewGUI.texture = m_spriteAtlasData.GetTextureAt(m_atlasIndex);
+                    m_previewGUI.SetDirty();
                 }
             }
         }
