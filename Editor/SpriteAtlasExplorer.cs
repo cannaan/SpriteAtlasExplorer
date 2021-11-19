@@ -7,6 +7,7 @@ using UnityEditor.Sprites;
 using UnityEditor.U2D;
 using System.IO;
 using System;
+using UnityEditorInternal;
 
 namespace SpriteAtlasExplorer
 {
@@ -158,12 +159,12 @@ namespace SpriteAtlasExplorer
                             }
                             break;
                         case SpriteAtlasMapData.SpriteAtlasError.SpriteNotPacked:
-                            EditorGUI.HelpBox(rect, $"sprite(s) not connected to sprite atlas.\r\nTry enter and exit play mode to fix it.", MessageType.Error);
+                            EditorGUI.HelpBox(rect, $"sprite(s) not connected to sprite atlas.\r\nTry change packable objects and change back to fix it.", MessageType.Error);
                             rect = Newline();
                             if (GUI.Button(new Rect(rect.center.x - 100, rect.yMin, 100, rect.height), "Fix me"))
                             {
                                 EditorApplication.EnterPlaymode();
-                                EditorUtility.DisplayDialog("Sprite Atlas Explorer", "we need to enter play mode to let Unity bind sprites to sprite atlas. It's harmless. Once it enters play mode, you can exit play mode immediately and explore sprites on SpriteAtlasExplorer", "OK");
+                                EditorUtility.DisplayDialog("Sprite Atlas Explorer", "Enter play mode for one time to let sprite atlas explorer read sprite data correctly.\r\nYou can exit play mode after closing this dialog.", "OK");
                                 Repaint();
                             }
                             break;
@@ -182,6 +183,28 @@ namespace SpriteAtlasExplorer
                 EditorSettings.spritePackerMode = SpritePackerMode.AlwaysOnAtlas;
             }
             SpriteAtlasUtility.PackAtlases(new SpriteAtlas[] { spriteAtlas }, EditorUserBuildSettings.activeBuildTarget, true);
+        }
+        private void RepackSpriteAtlas(SpriteAtlas spriteAtlas)
+        {
+            UnityEngine.Object[] packables = spriteAtlas.GetPackables();
+            SerializedObject serializedObject = new SerializedObject(spriteAtlas);
+            SerializedProperty packableProperty = serializedObject.FindProperty("m_EditorData.packables");
+            for(int i = packables.Length - 1;i >= 0;--i)
+            {
+                packableProperty.DeleteArrayElementAtIndex(i);
+            }
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            AssetDatabase.Refresh();
+            PackSpriteAtlas(spriteAtlas);
+            for(int i = 0;i < packables.Length;++i)
+            {
+                packableProperty.InsertArrayElementAtIndex(i);
+                SerializedProperty element = packableProperty.GetArrayElementAtIndex(i);
+                element.objectReferenceValue = packables[i];
+            }
+            serializedObject.ApplyModifiedProperties();
+            AssetDatabase.Refresh();
+            PackSpriteAtlas(spriteAtlas);
         }
 
         private void DrawTexturePreview()
