@@ -45,6 +45,29 @@ namespace SpriteAtlasExplorer
             }
             return null;
         }
+        public int GetSpriteCount(int textureIndex)
+        {
+            if(textureIndex >= 0 && textureIndex < textureCount)
+            {
+                return m_spriteTextures[textureIndex].sprites.Count;
+            }
+            return 0;
+        }
+        public bool GetSpriteAt(int textureIndex, int index, out Rect rect, out Sprite sprite)
+        {
+            if(textureIndex >= 0 && textureIndex < textureCount)
+            {
+                if(index >= 0 && index < m_spriteTextures[textureIndex].sprites.Count)
+                {
+                    rect = m_spriteTextures[textureIndex].sprites[index].rect;
+                    sprite = m_spriteTextures[textureIndex].sprites[index].sprite;
+                    return true;
+                }
+            }
+            rect = default;
+            sprite = null;
+            return false;
+        }
 
         private void Update(SpriteAtlas spriteAtlas)
         {
@@ -101,35 +124,6 @@ namespace SpriteAtlasExplorer
                 Sprite[] sprites = getPackedSpritesMethod.Invoke(null, new object[] { spriteAtlas }) as Sprite[];
                 foreach(Sprite s in sprites)
                 {
-                    Rect rect = Rect.MinMaxRect(0, 0, 0, 0);
-                    if(!s.packed)
-                    {
-                        int cnt = spriteAtlas.GetSprites(tmpSprites, s.name);
-                        if(cnt == 0)
-                        {
-                            error = SpriteAtlasError.AtlasNotGenerated;
-                            errorInfo = $"can not find {s.name} in sprite atlas {spriteAtlas.name}";
-                            return;
-                        }
-                        int sameNameCnt = 0;
-                        // get index of packedSprites with same name
-                        for(int i = 0;i < sprites.Length;++i)
-                        {
-                            if(sprites[i] == s)
-                            {
-                                break;
-                            }
-                            if(sprites[i].name == s.name)
-                            {
-                                ++sameNameCnt;
-                            }
-                        }
-                        rect = CalculateRect(tmpSprites[sameNameCnt]);
-                    }
-                    else
-                    {
-                        rect = CalculateRect(s);
-                    }
                     bool match = false;
                     Texture2D texture = null;
                     try
@@ -140,9 +134,11 @@ namespace SpriteAtlasExplorer
                     {
                         error = SpriteAtlasError.SpriteNotPacked;
                         Debug.LogError($"{s.name} is not packed into atlas.\r\n{exp.Message}\r\n{exp.StackTrace}", s);
+                        return;
                     }
                     if (texture != null)
                     {
+                        Rect rect = CalculateRect(s);
                         foreach (SpriteTexture st in m_spriteTextures)
                         {
                             if (st.texture == texture)
@@ -175,7 +171,7 @@ namespace SpriteAtlasExplorer
 
         private static Rect CalculateRect(Sprite sprite)
         {
-            Vector2[] uvs = sprite.uv;
+            Vector2[] uvs = SpriteUtility.GetSpriteUVs(sprite, true);
             if(uvs.Length > 0)
             {
                 float minX = uvs[0].x, minY = uvs[0].y, maxX = uvs[0].x, maxY = uvs[0].y;
