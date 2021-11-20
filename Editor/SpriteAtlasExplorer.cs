@@ -217,6 +217,7 @@ namespace SpriteAtlasExplorer
                             if(GUI.Button(new Rect(rect.center.x - 100, rect.yMin, 100, rect.height), "Fix me"))
                             {
                                 PackSpriteAtlas(m_spriteAtlas);
+                                InitSpriteAtlasInfo();
                                 Repaint();
                             }
                             break;
