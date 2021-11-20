@@ -1,13 +1,13 @@
 {
   "name": "com.cannaan.spriteatlasexplorer",
-  "displayName": "cannaan - Sprite Atlas Explorer",
+  "displayName": "Sprite Atlas Explorer",
   "version": "0.0.0",
   "unity": "2019.4",
-  "description": "Utility for sprite atlas to check and find sprites",
+  "description": "This tool can help you find the sprite from sprite atlas easily. \nBy looking at the atlas texture, and clicking the sprite on it, it will navigate to the sprite asset.",
   "keywords": [
     "unity",
-	"unity3d",
-	"upm",
+    "unity3d",
+    "upm",
     "cannaan",
     "utility"
   ],
