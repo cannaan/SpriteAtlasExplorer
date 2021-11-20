@@ -36,9 +36,6 @@ namespace SpriteAtlasExplorer
             activeRect.min = Vector2.Max(activeRect.min, rect.min);
             activeRect.max = Vector2.Min(activeRect.max, rect.max);
             uvRect = RectToNormalized(activeRect, rect);
-            float tmp = uvRect.yMax;
-            uvRect.yMax = 1.0f - uvRect.yMin;
-            uvRect.yMin = 1.0f - tmp;
             return activeRect;
         }
         private Rect GetActiveRect(Rect rect)
@@ -51,13 +48,13 @@ namespace SpriteAtlasExplorer
         {
             Vector2 min = PointToNormalized(rect.min, refRect);
             Vector2 max = PointToNormalized(rect.max, refRect);
-            return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
+            return Rect.MinMaxRect(min.x, Mathf.Min(min.y, max.y), max.x, Mathf.Max(min.y, max.y));
         }
         public Rect NormalizedToRect(Rect coord, Rect refRect)
         {
             Vector2 min = NormalizedToPoint(coord.min, refRect);
             Vector2 max = NormalizedToPoint(coord.max, refRect);
-            return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
+            return Rect.MinMaxRect(min.x, Mathf.Min(min.y, max.y), max.x, Mathf.Max(min.y, max.y));
         }
 
         public Vector2 PointToNormalized(Vector2 pos, Rect rect)
@@ -67,11 +64,14 @@ namespace SpriteAtlasExplorer
             Vector2 texStart = Vector2.one * 0.5f + m_offset - texSize * 0.5f;
             Rect uv = new Rect(texStart, texSize);
             Vector2 posInOne = (pos - one.min) / one.size;
-            return (posInOne - uv.min) / uv.size;
+            Vector2 normalized = (posInOne - uv.min) / uv.size;
+            normalized.y = 1.0f - normalized.y;
+            return normalized;
         }
 
         public Vector2 NormalizedToPoint(Vector2 coord, Rect rect)
         {
+            coord.y = 1.0f - coord.y;
             Rect one = new Rect(rect.xMin, rect.center.y - rect.width * 0.5f, rect.width, rect.width);
             Vector2 texSize = new Vector2(1.0f, 1.0f / aspect) * m_scale;
             Vector2 texStart = Vector2.one * 0.5f + m_offset - texSize * 0.5f;
@@ -82,6 +82,7 @@ namespace SpriteAtlasExplorer
 
         public Vector2 DirectionToNormalized(Vector2 dir, Rect rect)
         {
+            dir.y = -dir.y;
             Vector2 one = Vector2.one * rect.width;
             Vector2 texSize = new Vector2(1.0f, 1.0f / aspect) * m_scale;
             Vector2 dirInOne = dir / one;
@@ -89,6 +90,7 @@ namespace SpriteAtlasExplorer
         }
         public Vector2 NormalizedToDirection(Vector2 dir, Rect rect)
         {
+            dir.y = -dir.y;
             Vector2 one = Vector2.one * rect.width;
             Vector2 texSize = new Vector2(1.0f, 1.0f / aspect) * m_scale;
             Vector2 dirInOne = dir * texSize;

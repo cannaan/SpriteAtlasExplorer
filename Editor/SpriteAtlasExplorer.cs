@@ -279,9 +279,6 @@ namespace SpriteAtlasExplorer
             {
                 if(m_spriteAtlasData.GetSpriteAt(m_atlasIndex, i, out Rect spriteRect, out _))
                 {
-                    float tmp = spriteRect.yMin;
-                    spriteRect.yMin = 1.0f - spriteRect.yMax;
-                    spriteRect.yMax = 1.0f - tmp;
                     Rect guiRect = m_previewGUI.NormalizedToRect(spriteRect, rect);
                     MaskableRectGUI.Draw(guiRect, m_rectCol, rect, 2.0f, new Color(m_rectCol.r, m_rectCol.g, m_rectCol.b));
                 }
