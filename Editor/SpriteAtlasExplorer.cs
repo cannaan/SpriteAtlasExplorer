@@ -27,13 +27,14 @@ namespace SpriteAtlasExplorer
         private SpriteAtlas m_spriteAtlas;
         private SpriteAtlasMapData m_spriteAtlasData;
         private int m_atlasIndex;
-        private List<Sprite> m_selectedSprites = new List<Sprite>();
+        private Sprite m_selectedSprite = null;
         private Rect m_windowRect;
         private Texture2D m_backgroundTexture;
         private string[] m_atlasPopupNames;
         private ScalableTextureGUI m_previewGUI = new ScalableTextureGUI();
 
-        private Color m_rectCol;
+        private Color m_rectColor;
+        private Color m_selectedRectColor;
 
         private void OnEnable()
         {
@@ -44,7 +45,7 @@ namespace SpriteAtlasExplorer
         {
             m_spriteAtlas = spriteAtlas;
             InitSpriteAtlasInfo();
-            m_selectedSprites.Clear();
+            m_selectedSprite = null;
         }
 
         private void InitSpriteAtlasInfo()
@@ -77,13 +78,16 @@ namespace SpriteAtlasExplorer
                 colRect.width = 200;
                 EditorGUI.BeginChangeCheck();
                 Color oldTextColor = GUI.contentColor;
-                GUI.contentColor = new Color(m_rectCol.r, m_rectCol.g, m_rectCol.b);
-                m_rectCol = EditorGUI.ColorField(colRect, "Rect Color", m_rectCol);
-                GUI.contentColor = oldTextColor;
-                if(EditorGUI.EndChangeCheck())
+                GUI.contentColor = new Color(m_rectColor.r, m_rectColor.g, m_rectColor.b);
+                m_rectColor = EditorGUI.ColorField(colRect, "Rect Color", m_rectColor);
+                GUI.contentColor = new Color(m_selectedRectColor.r, m_selectedRectColor.g, m_selectedRectColor.b);
+                colRect.x += 220;
+                m_selectedRectColor = EditorGUI.ColorField(colRect, "Selected Color", m_selectedRectColor);
+                if (EditorGUI.EndChangeCheck())
                 {
                     SaveRectColor();
                 }
+                GUI.contentColor = oldTextColor;
                 Newline();
                 DrawTexturePreview();
                 /*Rect newline = Newline();
@@ -96,7 +100,7 @@ namespace SpriteAtlasExplorer
             EndGUI();
         }
 
-        private void ProcessSelectionEvent(Rect rect)
+        private bool ProcessSelectionEvent(Rect rect)
         {
             Vector2 pos = Event.current.mousePosition;
             if(Event.current.type == EventType.MouseUp)
@@ -104,19 +108,29 @@ namespace SpriteAtlasExplorer
                 if(rect.Contains(pos))
                 {
                     int cnt = m_spriteAtlasData.GetSpriteCount(m_atlasIndex);
+                    List<Sprite> selected = new List<Sprite>();
                     for (int i = 0; i < cnt; ++i)
                     {
-                        if (m_spriteAtlasData.GetSpriteAt(m_atlasIndex, i, out Rect spriteRect, out _))
+                        if (m_spriteAtlasData.GetSpriteAt(m_atlasIndex, i, out Rect spriteRect, out Sprite sprite))
                         {
-                            float tmp = spriteRect.yMin;
-                            spriteRect.yMin = 1.0f - spriteRect.yMax;
-                            spriteRect.yMax = 1.0f - tmp;
-                            spriteRect = m_previewGUI.NormalizedToRect(spriteRect, rect);
-
+                            Rect guiRect = m_previewGUI.NormalizedToRect(spriteRect, rect);
+                            if(guiRect.Contains(pos))
+                            {
+                                selected.Add(sprite);
+                            }
                         }
                     }
+                    int selectedIndex = selected.IndexOf(m_selectedSprite) + 1;
+                    m_selectedSprite = selected.Count > 0 ? selected[selectedIndex % selected.Count] : null;
+                    if(m_selectedSprite != null)
+                    {
+                        EditorGUIUtility.PingObject(m_selectedSprite);
+                    }
+                    Event.current.Use();
+                    return true;
                 }
             }
+            return false;
         }
 
         private Rect BeginGUI()
@@ -174,7 +188,7 @@ namespace SpriteAtlasExplorer
                 {
                     m_previewGUI.texture = m_spriteAtlasData.GetTextureAt(m_atlasIndex);
                     m_previewGUI.SetDirty();
-                    m_selectedSprites.Clear();
+                    m_selectedSprite = null;
                 }
             }
         }
@@ -263,7 +277,7 @@ namespace SpriteAtlasExplorer
                 }
                 Rect previewRect = NewRectToBottom();
                 bool repaint = m_previewGUI.OnGUI(previewRect);
-                ProcessSelectionEvent(previewRect);
+                repaint = ProcessSelectionEvent(previewRect) || repaint;
                 DrawSpriteRects(previewRect);
                 if(repaint)
                 {
@@ -277,20 +291,25 @@ namespace SpriteAtlasExplorer
             int cnt = m_spriteAtlasData.GetSpriteCount(m_atlasIndex);
             for(int i = 0;i < cnt;++i)
             {
-                if(m_spriteAtlasData.GetSpriteAt(m_atlasIndex, i, out Rect spriteRect, out _))
+                if(m_spriteAtlasData.GetSpriteAt(m_atlasIndex, i, out Rect spriteRect, out Sprite sprite))
                 {
                     Rect guiRect = m_previewGUI.NormalizedToRect(spriteRect, rect);
-                    MaskableRectGUI.Draw(guiRect, m_rectCol, rect, 2.0f, new Color(m_rectCol.r, m_rectCol.g, m_rectCol.b));
+                    Color color = sprite == m_selectedSprite ? m_selectedRectColor : m_rectColor;
+                    MaskableRectGUI.Draw(guiRect, color, rect, 2.0f, new Color(color.r, color.g, color.b));
                 }
             }
         }
 
         private void SaveRectColor()
         {
-            EditorPrefs.SetFloat("SpriteAtlasExplorer.RectColor.r", m_rectCol.r);
-            EditorPrefs.SetFloat("SpriteAtlasExplorer.RectColor.g", m_rectCol.g);
-            EditorPrefs.SetFloat("SpriteAtlasExplorer.RectColor.b", m_rectCol.b);
-            EditorPrefs.SetFloat("SpriteAtlasExplorer.RectColor.a", m_rectCol.a);
+            EditorPrefs.SetFloat("SpriteAtlasExplorer.RectColor.r", m_rectColor.r);
+            EditorPrefs.SetFloat("SpriteAtlasExplorer.RectColor.g", m_rectColor.g);
+            EditorPrefs.SetFloat("SpriteAtlasExplorer.RectColor.b", m_rectColor.b);
+            EditorPrefs.SetFloat("SpriteAtlasExplorer.RectColor.a", m_rectColor.a);
+            EditorPrefs.SetFloat("SpriteAtlasExplorer.SelectedRectColor.r", m_selectedRectColor.r);
+            EditorPrefs.SetFloat("SpriteAtlasExplorer.SelectedRectColor.g", m_selectedRectColor.g);
+            EditorPrefs.SetFloat("SpriteAtlasExplorer.SelectedRectColor.b", m_selectedRectColor.b);
+            EditorPrefs.SetFloat("SpriteAtlasExplorer.SelectedRectColor.a", m_selectedRectColor.a);
         }
         private void LoadRectColor()
         {
@@ -298,7 +317,12 @@ namespace SpriteAtlasExplorer
             float g = EditorPrefs.GetFloat("SpriteAtlasExplorer.RectColor.g", 136.0f / 255);
             float b = EditorPrefs.GetFloat("SpriteAtlasExplorer.RectColor.b", 188.0f / 255);
             float a = EditorPrefs.GetFloat("SpriteAtlasExplorer.RectColor.a", 60.0f / 255);
-            m_rectCol = new Color(r, g, b, a);
+            m_rectColor = new Color(r, g, b, a);
+            r = EditorPrefs.GetFloat("SpriteAtlasExplorer.SelectedRectColor.r", 188.0f / 255);
+            g = EditorPrefs.GetFloat("SpriteAtlasExplorer.SelectedRectColor.g", 147.0f / 255);
+            b = EditorPrefs.GetFloat("SpriteAtlasExplorer.SelectedRectColor.b", 0);
+            a = EditorPrefs.GetFloat("SpriteAtlasExplorer.SelectedRectColor.a", 60.0f / 255);
+            m_selectedRectColor = new Color(r, g, b, a);
         }
 
         private Rect Newline()
