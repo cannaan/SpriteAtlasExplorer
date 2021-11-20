@@ -49,7 +49,7 @@ namespace SpriteAtlasExplorer
         }
 
         private void InitSpriteAtlasInfo()
-        {
+        { 
             m_spriteAtlasData = null;
             m_atlasIndex = 0;
             m_previewGUI = new ScalableTextureGUI();
@@ -72,6 +72,10 @@ namespace SpriteAtlasExplorer
             DrawRefreshButton();
             if (m_spriteAtlas != null)
             {
+                if(m_spriteAtlasData == null)
+                {
+                    InitSpriteAtlasInfo();
+                }
                 DrawPageField();
                 DrawInfos();
                 Rect colRect = Newline();

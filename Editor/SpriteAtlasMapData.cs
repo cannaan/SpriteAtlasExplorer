@@ -118,7 +118,6 @@ namespace SpriteAtlasExplorer
                     Debug.LogError($"SpriteAtlas {spriteAtlas.name} sprite count is 0.");
                     return;
                 }
-                Sprite[] tmpSprites = new Sprite[spriteCount];
                 Type spriteAtlasExtensionsType = typeof(SpriteAtlasExtensions);
                 MethodInfo getPackedSpritesMethod = spriteAtlasExtensionsType.GetMethod("GetPackedSprites", BindingFlags.Static | BindingFlags.NonPublic);
                 Sprite[] sprites = getPackedSpritesMethod.Invoke(null, new object[] { spriteAtlas }) as Sprite[];
@@ -130,6 +129,7 @@ namespace SpriteAtlasExplorer
                     {
                         texture = SpriteUtility.GetSpriteTexture(s, true);
                     }
+
                     catch(Exception exp)
                     {
                         error = SpriteAtlasError.SpriteNotPacked;
