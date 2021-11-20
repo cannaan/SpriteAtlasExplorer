@@ -78,6 +78,7 @@ namespace SpriteAtlasExplorer
                 }
                 DrawPageField();
                 DrawInfos();
+                Newline();
                 Rect colRect = Newline();
                 colRect.width = 200;
                 EditorGUI.BeginChangeCheck();
@@ -213,8 +214,7 @@ namespace SpriteAtlasExplorer
                     {
                         case SpriteAtlasMapData.SpriteAtlasError.AtlasNotGenerated:
                             EditorGUI.HelpBox(rect, "Sprite Atlas has no texture generated or has no sprites included.", MessageType.Error);
-                            rect = Newline();
-                            if(GUI.Button(new Rect(rect.center.x - 100, rect.yMin, 100, rect.height), "Fix me"))
+                            if(GUI.Button(new Rect(rect.center.x - 100, rect.yMax - EditorGUIUtility.singleLineHeight - 5, 100, EditorGUIUtility.singleLineHeight), "Fix me"))
                             {
                                 PackSpriteAtlas(m_spriteAtlas);
                                 InitSpriteAtlasInfo();
@@ -223,8 +223,7 @@ namespace SpriteAtlasExplorer
                             break;
                         case SpriteAtlasMapData.SpriteAtlasError.SpriteNotPacked:
                             EditorGUI.HelpBox(rect, $"sprite(s) not connected to sprite atlas.\r\nTry change packable objects and change back to fix it.", MessageType.Error);
-                            rect = Newline();
-                            if (GUI.Button(new Rect(rect.center.x - 100, rect.yMin, 100, rect.height), "Fix me"))
+                            if (GUI.Button(new Rect(rect.center.x - 100, rect.yMax - EditorGUIUtility.singleLineHeight - 5, 100, EditorGUIUtility.singleLineHeight), "Fix me"))
                             {
                                 EditorApplication.EnterPlaymode();
                                 EditorUtility.DisplayDialog("Sprite Atlas Explorer", "Enter play mode for one time to let sprite atlas explorer read sprite data correctly.\r\nYou can exit play mode after closing this dialog.", "OK");
