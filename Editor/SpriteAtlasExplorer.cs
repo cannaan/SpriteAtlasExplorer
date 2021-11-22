@@ -22,6 +22,8 @@ namespace SpriteAtlasExplorer
             wnd.Show();
         }
 
+        [SerializeField]
+        private Texture2D m_wndIcon;
         private static string s_transparentBGPath => "Default-Checker-Gray.png";
 
         private SpriteAtlas m_spriteAtlas;
@@ -39,6 +41,7 @@ namespace SpriteAtlasExplorer
         private void OnEnable()
         {
             LoadRectColor();
+            titleContent = new GUIContent("SpriteAtlas Explorer", m_wndIcon);
         }
 
         private void SetSpriteAtlas(SpriteAtlas spriteAtlas)
